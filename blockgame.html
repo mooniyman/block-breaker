@@ -74,6 +74,7 @@
   let gameRunning = false;
   let lives = 3; // 残機数
   let gameInitialized = false; // ブロック初期化フラグ
+  let particles = []; // ブロック破片の配列
 
   // キー操作イベント
   document.addEventListener("keydown", keyDownHandler);
@@ -111,7 +112,6 @@
     brickOffsetTop = 30;
     brickOffsetLeft = 30;
 
-    // ブロック初期化（1回だけ）
     if (!gameInitialized) {
       bricks = [];
       for (let c = 0; c < brickColumnCount; c++) {
@@ -124,7 +124,6 @@
     }
   }
 
-  // ボール描画（立体風）
   function drawBall() {
     const gradient = ctx.createRadialGradient(ballX - 3, ballY - 3, 2, ballX, ballY, ballRadius);
     gradient.addColorStop(0, "#ffffff");
@@ -138,7 +137,6 @@
     ctx.closePath();
   }
 
-  // パドル描画（立体風）
   function drawPaddle() {
     const gradient = ctx.createLinearGradient(paddleX, canvas.height - paddleHeight, paddleX + paddleWidth, canvas.height);
     gradient.addColorStop(0, "#ffff99");
@@ -151,7 +149,6 @@
     ctx.fill();
     ctx.closePath();
 
-    // ハイライト線
     ctx.beginPath();
     ctx.moveTo(paddleX, canvas.height - paddleHeight);
     ctx.lineTo(paddleX + paddleWidth, canvas.height - paddleHeight);
@@ -161,7 +158,6 @@
     ctx.closePath();
   }
 
-  // ブロック描画
   function drawBricks() {
     for (let c = 0; c < brickColumnCount; c++) {
       for (let r = 0; r < brickRowCount; r++) {
@@ -180,14 +176,36 @@
     }
   }
 
-  // 残機表示
+  function drawParticles() {
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i];
+      ctx.fillStyle = `rgba(255,102,102,${p.alpha})`;
+      ctx.fillRect(p.x, p.y, 4, 4);
+      p.x += p.dx;
+      p.y += p.dy;
+      p.alpha -= 0.02;
+    }
+    particles = particles.filter(p => p.alpha > 0);
+  }
+
+  function createParticles(x, y) {
+    for (let i = 0; i < 10; i++) {
+      particles.push({
+        x: x,
+        y: y,
+        dx: (Math.random() - 0.5) * 4,
+        dy: (Math.random() - 0.5) * 4,
+        alpha: 1.0
+      });
+    }
+  }
+
   function drawLives() {
     ctx.font = "16px Arial";
     ctx.fillStyle = "#ffffff";
     ctx.fillText("残機: " + lives, canvas.width - 80, 20);
   }
 
-  // ブロックとの衝突判定
   function collisionDetection() {
     for (let c = 0; c < brickColumnCount; c++) {
       for (let r = 0; r < brickRowCount; r++) {
@@ -201,13 +219,13 @@
           ) {
             ballDY = -ballDY;
             b.status = 0;
+            createParticles(b.x + brickWidth / 2, b.y + brickHeight / 2);
           }
         }
       }
     }
   }
 
-  // ゲームクリア判定
   function checkGameClear() {
     for (let c = 0; c < brickColumnCount; c++) {
       for (let r = 0; r < brickRowCount; r++) {
@@ -219,18 +237,17 @@
     return true;
   }
 
-  // メイン描画ループ
   function draw() {
     if (!gameRunning) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawBricks();
+    drawParticles();
     drawBall();
     drawPaddle();
     drawLives();
     collisionDetection();
 
-    // 壁との衝突
     if (ballX + ballDX > canvas.width - ballRadius || ballX + ballDX < ballRadius) {
       ballDX = -ballDX;
     }
@@ -242,7 +259,6 @@
       } else {
         lives--;
         if (lives > 0) {
-          // ボールとパドルだけ初期化（ブロックはそのまま）
           ballX = canvas.width / 2;
           ballY = canvas.height - 30;
           ballDX = 2;
@@ -256,18 +272,15 @@
       }
     }
 
-    // パドル操作
     if (rightPressed && paddleX < canvas.width - paddleWidth) {
       paddleX += 7;
     } else if (leftPressed && paddleX > 0) {
       paddleX -= 7;
     }
 
-    // ボールの位置更新
     ballX += ballDX;
     ballY += ballDY;
 
-    // ゲームクリア判定
     if (checkGameClear()) {
       gameRunning = false;
       document.getElementById("gameClearScreen").style.display = "flex";
@@ -277,7 +290,6 @@
     requestAnimationFrame(draw);
   }
 
-  // ゲーム開始
   function startGame() {
     document.getElementById("titleScreen").style.display = "none";
     document.getElementById("gameOverScreen").style.display = "none";
@@ -285,11 +297,11 @@
 
     initGame(); // 初回のみブロック初期化
     lives = 3;
+    particles = []; // 破片配列をリセット（グローバル変数を使用）
     gameRunning = true;
     draw();
   }
 
-  // タイトルに戻る
   function returnToTitle() {
     document.getElementById("gameOverScreen").style.display = "none";
     document.getElementById("gameClearScreen").style.display = "none";
