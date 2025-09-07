@@ -62,7 +62,8 @@
   <!-- ゲーム画面 -->
   <canvas id="gameCanvas" width="480" height="320"></canvas>
 
-  <script>
+<script>
+  // Canvasの取得と描画コンテキストの設定
   const canvas = document.getElementById("gameCanvas");
   const ctx = canvas.getContext("2d");
 
@@ -74,9 +75,9 @@
   let gameRunning = false;
   let lives = 3; // 残機数
   let gameInitialized = false; // ブロック初期化フラグ
-  let particles = []; // ブロック破片の配列
+  let particles = []; // 破片エフェクト用の配列
 
-  // キー操作イベント
+  // キー操作イベントの登録
   document.addEventListener("keydown", keyDownHandler);
   document.addEventListener("keyup", keyUpHandler);
 
@@ -90,20 +91,11 @@
     else if (e.key === "Left" || e.key === "ArrowLeft") leftPressed = false;
   }
 
-  // ゲーム初期化（ブロックは初回のみ）
+  // ゲーム初期化（ブロックは初回のみ生成）
   function initGame() {
-    ballX = canvas.width / 2;
-    ballY = canvas.height - 30;
-    ballDX = 2;
-    ballDY = -2;
     ballRadius = 10;
-
     paddleHeight = 10;
     paddleWidth = 75;
-    paddleX = (canvas.width - paddleWidth) / 2;
-    rightPressed = false;
-    leftPressed = false;
-
     brickRowCount = 3;
     brickColumnCount = 5;
     brickWidth = 75;
@@ -124,6 +116,7 @@
     }
   }
 
+  // ボール描画（立体風グラデーション）
   function drawBall() {
     const gradient = ctx.createRadialGradient(ballX - 3, ballY - 3, 2, ballX, ballY, ballRadius);
     gradient.addColorStop(0, "#ffffff");
@@ -137,6 +130,7 @@
     ctx.closePath();
   }
 
+  // パドル描画（立体風グラデーション＋ハイライト）
   function drawPaddle() {
     const gradient = ctx.createLinearGradient(paddleX, canvas.height - paddleHeight, paddleX + paddleWidth, canvas.height);
     gradient.addColorStop(0, "#ffff99");
@@ -158,6 +152,7 @@
     ctx.closePath();
   }
 
+  // ブロック描画
   function drawBricks() {
     for (let c = 0; c < brickColumnCount; c++) {
       for (let r = 0; r < brickRowCount; r++) {
@@ -176,18 +171,14 @@
     }
   }
 
-  function drawParticles() {
-    for (let i = 0; i < particles.length; i++) {
-      const p = particles[i];
-      ctx.fillStyle = `rgba(255,102,102,${p.alpha})`;
-      ctx.fillRect(p.x, p.y, 4, 4);
-      p.x += p.dx;
-      p.y += p.dy;
-      p.alpha -= 0.02;
-    }
-    particles = particles.filter(p => p.alpha > 0);
+  // 残機表示
+  function drawLives() {
+    ctx.font = "16px Arial";
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText("残機: " + lives, canvas.width - 80, 20);
   }
 
+  // 破片生成（ブロック破壊時）
   function createParticles(x, y) {
     for (let i = 0; i < 10; i++) {
       particles.push({
@@ -200,12 +191,20 @@
     }
   }
 
-  function drawLives() {
-    ctx.font = "16px Arial";
-    ctx.fillStyle = "#ffffff";
-    ctx.fillText("残機: " + lives, canvas.width - 80, 20);
+  // 破片描画と更新
+  function drawParticles() {
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i];
+      ctx.fillStyle = `rgba(255,102,102,${p.alpha})`;
+      ctx.fillRect(p.x, p.y, 4, 4);
+      p.x += p.dx;
+      p.y += p.dy;
+      p.alpha -= 0.02;
+    }
+    particles = particles.filter(p => p.alpha > 0);
   }
 
+  // ブロックとの衝突判定
   function collisionDetection() {
     for (let c = 0; c < brickColumnCount; c++) {
       for (let r = 0; r < brickRowCount; r++) {
@@ -226,6 +225,7 @@
     }
   }
 
+  // ゲームクリア判定
   function checkGameClear() {
     for (let c = 0; c < brickColumnCount; c++) {
       for (let r = 0; r < brickRowCount; r++) {
@@ -237,6 +237,7 @@
     return true;
   }
 
+  // メイン描画ループ
   function draw() {
     if (!gameRunning) return;
 
@@ -248,6 +249,7 @@
     drawLives();
     collisionDetection();
 
+    // 壁との衝突
     if (ballX + ballDX > canvas.width - ballRadius || ballX + ballDX < ballRadius) {
       ballDX = -ballDX;
     }
@@ -258,29 +260,29 @@
         ballDY = -ballDY;
       } else {
         lives--;
+        gameRunning = false;
+
         if (lives > 0) {
-          ballX = canvas.width / 2;
-          ballY = canvas.height - 30;
-          ballDX = 2;
-          ballDY = -2;
-          paddleX = (canvas.width - paddleWidth) / 2;
+          document.getElementById("titleScreen").style.display = "flex"; // 再スタート待機
         } else {
-          gameRunning = false;
-          document.getElementById("gameOverScreen").style.display = "flex";
-          return;
+          document.getElementById("gameOverScreen").style.display = "flex"; // ゲームオーバー
         }
+        return;
       }
     }
 
+    // パドル操作
     if (rightPressed && paddleX < canvas.width - paddleWidth) {
       paddleX += 7;
     } else if (leftPressed && paddleX > 0) {
       paddleX -= 7;
     }
 
+    // ボール位置更新
     ballX += ballDX;
     ballY += ballDY;
 
+    // ゲームクリア判定
     if (checkGameClear()) {
       gameRunning = false;
       document.getElementById("gameClearScreen").style.display = "flex";
@@ -290,22 +292,43 @@
     requestAnimationFrame(draw);
   }
 
-  function startGame() {
+    // ゲーム開始（毎回スタートボタンで呼ばれる）
+    function startGame() {
+    // すべての画面を非表示にしてゲーム開始
     document.getElementById("titleScreen").style.display = "none";
     document.getElementById("gameOverScreen").style.display = "none";
     document.getElementById("gameClearScreen").style.display = "none";
 
-    initGame(); // 初回のみブロック初期化
-    lives = 3;
-    particles = []; // 破片配列をリセット（グローバル変数を使用）
+    // 初回のみブロックを生成
+    if (!gameInitialized) {
+      initGame();
+    }
+
+    // ボールとパドルの初期化（毎回）
+    ballX = canvas.width / 2;
+    ballY = canvas.height - 30;
+    ballDX = 2;
+    ballDY = -2;
+    paddleX = (canvas.width - paddleWidth) / 2;
+    rightPressed = false;
+    leftPressed = false;
+
+    // 破片をリセット
+    particles = [];
+
+    // ゲーム開始
     gameRunning = true;
     draw();
   }
 
-  function returnToTitle() {
+    function returnToTitle() {
+    // 結果画面を閉じてタイトル画面へ戻る
     document.getElementById("gameOverScreen").style.display = "none";
     document.getElementById("gameClearScreen").style.display = "none";
     document.getElementById("titleScreen").style.display = "flex";
-    gameInitialized = false; // ブロックを再初期化するためにフラグを戻す
+
+    // ゲームオーバー時はブロックを再生成
+    gameInitialized = false;
+    lives = 3;
   }
 </script>
